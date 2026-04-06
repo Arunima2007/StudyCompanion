@@ -7,54 +7,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum DifficultyLabel {
-  AGAIN
-  EASY
-  MEDIUM
-  HARD
-}
-
 model User {
   id                         String          @id @default(cuid())
-  name                       String
   email                      String          @unique
-  passwordHash               String?
+  name                       String
   googleId                   String?         @unique
   createdAt                  DateTime        @default(now())
-  updatedAt                  DateTime        @updatedAt
-  lastLoginAt                DateTime?
-  hasCompletedOnboardingTour Boolean         @default(false)
   currentStreak              Int             @default(0)
-  maxStreak                  Int             @default(0)
-  totalStudyDays             Int             @default(0)
+  hasCompletedOnboardingTour Boolean         @default(false)
+  lastLoginAt                DateTime?
   maxActiveDays              Int             @default(0)
-  subjects                   Subject[]
-  reviewAttempts             ReviewAttempt[]
+  maxStreak                  Int             @default(0)
+  passwordHash               String?
+  totalStudyDays             Int             @default(0)
+  updatedAt                  DateTime        @updatedAt
   dailyActivities            DailyActivity[]
+  reviewAttempts             ReviewAttempt[]
+  subjects                   Subject[]
 }
 
 model Subject {
   id          String    @id @default(cuid())
   userId      String
-  title       String
-  description String?
-  color       String?
   createdAt   DateTime  @default(now())
+  color       String?
+  description String?
+  title       String
   updatedAt   DateTime  @updatedAt
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   chapters    Chapter[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Chapter {
   id          String      @id @default(cuid())
   subjectId   String
-  title       String
-  description String?
   createdAt   DateTime    @default(now())
+  description String?
+  title       String
   updatedAt   DateTime    @updatedAt
   subject     Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  notes       Note[]
   flashCards  FlashCard[]
+  notes       Note[]
 }
 
 model Note {
@@ -68,23 +61,23 @@ model Note {
 }
 
 model FlashCard {
-  id                     String          @id @default(cuid())
-  chapterId              String
-  type                   String
-  question               String
-  referenceAnswer        String
-  hint                   String?
-  sourceSnippet          String?
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
-  reviewCount            Int             @default(0)
-  successfulRecallCount  Int             @default(0)
-  averageScore           Float           @default(0)
-  difficultyLabel        DifficultyLabel @default(MEDIUM)
-  lastReviewedAt         DateTime?
-  nextReviewAt           DateTime?
-  chapter                Chapter         @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  reviewAttempts         ReviewAttempt[]
+  id                    String          @id @default(cuid())
+  chapterId             String
+  type                  String
+  question              String
+  referenceAnswer       String
+  hint                  String?
+  sourceSnippet         String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  reviewCount           Int             @default(0)
+  successfulRecallCount Int             @default(0)
+  averageScore          Float           @default(0)
+  difficultyLabel       DifficultyLabel @default(MEDIUM)
+  lastReviewedAt        DateTime?
+  nextReviewAt          DateTime?
+  chapter               Chapter         @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  reviewAttempts        ReviewAttempt[]
 }
 
 model ReviewAttempt {
@@ -102,13 +95,19 @@ model ReviewAttempt {
 }
 
 model DailyActivity {
-  id            String   @id @default(cuid())
-  userId        String
-  date          DateTime
-  cardsReviewed Int      @default(0)
-  minutesStudied Int     @default(0)
-  streakActive  Boolean  @default(false)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  date           DateTime
+  cardsReviewed  Int      @default(0)
+  minutesStudied Int      @default(0)
+  streakActive   Boolean  @default(false)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+}
+
+enum DifficultyLabel {
+  EASY
+  MEDIUM
+  HARD
 }

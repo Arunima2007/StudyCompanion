@@ -1,5 +1,47 @@
 import { prisma } from "../lib/prisma.js";
 
+function normalizeChapterTitle(title) {
+  return title.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function pickCanonicalChapter(chapters) {
+  return [...chapters].sort((left, right) => {
+    const leftTime = new Date(left.updatedAt ?? left.createdAt).getTime();
+    const rightTime = new Date(right.updatedAt ?? right.createdAt).getTime();
+    return rightTime - leftTime;
+  })[0];
+}
+
+function mergeSubjectChapters(subjects, now = new Date()) {
+  return subjects.map((subject) => {
+    const groupedChapters = new Map();
+
+    for (const chapter of subject.chapters) {
+      const key = normalizeChapterTitle(chapter.title);
+      const group = groupedChapters.get(key) ?? [];
+      group.push(chapter);
+      groupedChapters.set(key, group);
+    }
+
+    const chapters = Array.from(groupedChapters.values()).map((chaptersInGroup) => {
+      const canonicalChapter = pickCanonicalChapter(chaptersInGroup);
+      return {
+        id: canonicalChapter.id,
+        title: canonicalChapter.title,
+        flashCards: canonicalChapter.flashCards,
+        dueCount: canonicalChapter.flashCards.filter(
+          (card) => !card.nextReviewAt || card.nextReviewAt <= now
+        ).length
+      };
+    });
+
+    return {
+      ...subject,
+      mergedChapters: chapters
+    };
+  });
+}
+
 function formatLocalDateKey(input) {
   const date = new Date(input);
   const year = date.getFullYear();
@@ -41,6 +83,7 @@ function getRangeStart(range) {
 }
 
 export async function dashboard(req, res) {
+  const now = new Date();
   const user = await prisma.user.findUnique({
     where: { id: req.user.sub }
   });
@@ -56,6 +99,7 @@ export async function dashboard(req, res) {
     },
     orderBy: { updatedAt: "desc" }
   });
+  const mergedSubjects = mergeSubjectChapters(subjects, now);
 
   const recentAttempts = await prisma.reviewAttempt.findMany({
     where: { userId: req.user.sub },
@@ -74,21 +118,20 @@ export async function dashboard(req, res) {
     }
   });
 
-  const totalCards = subjects.reduce(
+  const totalCards = mergedSubjects.reduce(
     (total, subject) =>
-      total + subject.chapters.reduce((chapterTotal, chapter) => chapterTotal + chapter.flashCards.length, 0),
+      total +
+      subject.mergedChapters.reduce(
+        (chapterTotal, chapter) => chapterTotal + chapter.flashCards.length,
+        0
+      ),
     0
   );
 
-  const dueToday = subjects.reduce(
+  const dueToday = mergedSubjects.reduce(
     (total, subject) =>
       total +
-      subject.chapters.reduce(
-        (chapterTotal, chapter) =>
-          chapterTotal +
-          chapter.flashCards.filter((card) => !card.nextReviewAt || card.nextReviewAt <= new Date()).length,
-        0
-      ),
+      subject.mergedChapters.reduce((chapterTotal, chapter) => chapterTotal + chapter.dueCount, 0),
     0
   );
 
@@ -107,17 +150,15 @@ export async function dashboard(req, res) {
       totalCards,
       avgAccuracy
     },
-    subjects: subjects.map((subject) => ({
+    subjects: mergedSubjects.map((subject) => ({
       id: subject.id,
       title: subject.title,
       color: subject.color ?? "#6C5CE7",
-      cards: subject.chapters.reduce((total, chapter) => total + chapter.flashCards.length, 0),
-      due: subject.chapters.reduce(
-        (total, chapter) =>
-          total +
-          chapter.flashCards.filter((card) => !card.nextReviewAt || card.nextReviewAt <= new Date()).length,
+      cards: subject.mergedChapters.reduce(
+        (total, chapter) => total + chapter.flashCards.length,
         0
-      )
+      ),
+      due: subject.mergedChapters.reduce((total, chapter) => total + chapter.dueCount, 0)
     })),
     recentActivity: recentAttempts.map((attempt) => ({
       id: attempt.id,

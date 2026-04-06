@@ -45,18 +45,74 @@ function startOfLocalDay(date = new Date()) {
   return value;
 }
 
-function nextReviewDate(label) {
-  const date = new Date();
-  if (label === "again") {
-    date.setMinutes(date.getMinutes() + 10);
-  } else if (label === "hard") {
-    date.setDate(date.getDate() + 1);
-  } else if (label === "medium") {
-    date.setDate(date.getDate() + 3);
-  } else {
-    date.setDate(date.getDate() + 7);
+function scheduleNextReview(flashCard, difficultyLabel) {
+  const now = new Date();
+  const currentStep = flashCard.reviewCount ?? 0;
+  const successRate =
+    flashCard.reviewCount > 0
+      ? flashCard.successfulRecallCount / flashCard.reviewCount
+      : 0;
+  const estimatedEase = 1.7 + successRate * 1.1 + (flashCard.averageScore >= 85 ? 0.15 : 0);
+
+  if (difficultyLabel === "again") {
+    const nextReviewAt = new Date(now);
+    nextReviewAt.setMinutes(nextReviewAt.getMinutes() + 10);
+
+    return {
+      nextReviewAt
+    };
   }
-  return date;
+
+  if (difficultyLabel === "hard") {
+    const nextInterval =
+      currentStep <= 1
+        ? 1
+        : currentStep === 2
+          ? 2
+          : Math.max(2, Math.round(Math.max(1, currentStep) * 0.9));
+    const nextReviewAt = new Date(now);
+    nextReviewAt.setDate(nextReviewAt.getDate() + nextInterval);
+
+    return {
+      nextReviewAt
+    };
+  }
+
+  if (difficultyLabel === "medium") {
+    const nextInterval =
+      currentStep === 0
+        ? 1
+        : currentStep === 1
+          ? 3
+          : currentStep === 2
+            ? 5
+            : Math.max(4, Math.round(currentStep * estimatedEase));
+    const nextReviewAt = new Date(now);
+    nextReviewAt.setDate(nextReviewAt.getDate() + nextInterval);
+
+    return {
+      nextReviewAt
+    };
+  }
+
+  const nextInterval =
+    currentStep === 0
+      ? 3
+      : currentStep === 1
+        ? 7
+        : currentStep === 2
+          ? 12
+          : Math.max(7, Math.round(currentStep * (estimatedEase + 1.1)));
+  const nextReviewAt = new Date(now);
+  nextReviewAt.setDate(nextReviewAt.getDate() + nextInterval);
+
+  return {
+    nextReviewAt
+  };
+}
+
+function toPersistedDifficultyLabel(difficultyLabel) {
+  return difficultyLabel === "again" ? "HARD" : difficultyLabel.toUpperCase();
 }
 
 export async function generateFlashcards(req, res) {
@@ -77,13 +133,16 @@ export async function generateFlashcards(req, res) {
     return res.status(404).json({ message: "Chapter not found." });
   }
 
-  const latestNote = chapter.notes[0];
-  if (!latestNote?.content) {
-    return res.status(400).json({ message: "Upload or add notes before generating flashcards." });
+  const latestUsableNote = chapter.notes.find((note) => note.content?.trim());
+
+  if (!latestUsableNote) {
+    return res.status(400).json({
+      message: "No readable note content found for this chapter. Paste text notes or upload a text-based PDF."
+    });
   }
 
   const aiResult = await generateFlashcardsWithAi({
-    notes: latestNote.content,
+    notes: latestUsableNote.content,
     chapter_title: chapter.title,
     review_time_minutes: Number.parseInt(parsed.estimatedReviewTime ?? "20", 10) || 20,
     cards_requested: parsed.cardsRequested ?? 8
@@ -230,7 +289,8 @@ export async function rateReview(req, res) {
     return res.status(404).json({ message: "Flashcard not found." });
   }
 
-  const nextReviewAt = nextReviewDate(parsed.difficultyLabel);
+  const schedule = scheduleNextReview(flashCard, parsed.difficultyLabel);
+  const persistedDifficultyLabel = toPersistedDifficultyLabel(parsed.difficultyLabel);
   await prisma.reviewAttempt.create({
     data: {
       flashCardId: flashCard.id,
@@ -238,17 +298,17 @@ export async function rateReview(req, res) {
       userAnswer: parsed.userAnswer,
       aiFeedback: parsed.aiFeedback,
       aiScore: parsed.aiFeedback.score,
-      difficultyLabel: parsed.difficultyLabel.toUpperCase(),
-      nextReviewAt
+      difficultyLabel: persistedDifficultyLabel,
+      nextReviewAt: schedule.nextReviewAt
     }
   });
 
   await prisma.flashCard.update({
     where: { id: flashCard.id },
     data: {
-      difficultyLabel: parsed.difficultyLabel.toUpperCase(),
+      difficultyLabel: persistedDifficultyLabel,
       lastReviewedAt: new Date(),
-      nextReviewAt,
+      nextReviewAt: schedule.nextReviewAt,
       reviewCount: { increment: 1 },
       successfulRecallCount: parsed.aiFeedback.score >= 70 ? { increment: 1 } : undefined,
       averageScore:
@@ -287,6 +347,6 @@ export async function rateReview(req, res) {
   res.json({
     flashCardId: req.params.flashCardId,
     feedback: parsed.aiFeedback,
-    nextReviewAt
+    nextReviewAt: schedule.nextReviewAt
   });
 }

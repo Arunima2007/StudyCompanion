@@ -30,7 +30,7 @@ async def health():
 @app.post("/parse-pdf")
 async def parse_pdf(file: UploadFile = File(...)):
     content = await file.read()
-    text = extract_text_from_pdf(content)
+    text = await extract_text_from_pdf(content)
     return {"filename": file.filename, "text": text}
 
 

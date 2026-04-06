@@ -95,10 +95,42 @@ export default function ReviewPage() {
           <div className="h-full rounded-full bg-brand" style={{ width: `${((index + 1) / cards.length) * 100}%` }} />
         </div>
         <h1 className="mt-6 text-3xl font-semibold">{currentCard.question}</h1>
-        <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Type your answer..." className="mt-6 min-h-40 w-full rounded-[1.6rem] border border-brand-mid px-4 py-4 outline-none" />
+        <textarea
+          value={answer}
+          onChange={(event) => setAnswer(event.target.value)}
+          placeholder="Type your answer..."
+          disabled={submitMutation.isPending}
+          className="mt-6 min-h-40 w-full rounded-[1.6rem] border border-brand-mid px-4 py-4 outline-none disabled:cursor-not-allowed disabled:bg-slate-50"
+        />
         {formError ? <p className="mt-3 text-sm text-red-500">{formError}</p> : null}
-        <button type="button" onClick={handleSubmit} className="mt-4 rounded-full bg-brand px-5 py-3 font-medium text-white">Submit Answer</button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitMutation.isPending}
+          className="mt-4 inline-flex items-center gap-3 rounded-full bg-brand px-5 py-3 font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {submitMutation.isPending ? (
+            <>
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              Reviewing with AI...
+            </>
+          ) : (
+            "Submit Answer"
+          )}
+        </button>
       </div>
+
+      {submitMutation.isPending ? (
+        <div className="rounded-[2rem] bg-white p-6 shadow-card">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-mid border-t-brand" />
+            <div>
+              <h2 className="text-xl font-semibold">AI is reviewing your answer</h2>
+              <p className="mt-1 text-sm text-muted">Please wait a moment while Flashr scores your response and prepares feedback.</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {feedback ? (
         <div className="rounded-[2rem] bg-white p-6 shadow-card">

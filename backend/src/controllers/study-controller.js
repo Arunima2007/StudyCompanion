@@ -149,10 +149,25 @@ export async function uploadNotes(req, res) {
   }
 
   let content = req.body.content ?? "";
+  const fileName = req.file?.originalname ?? "";
+  const isPdfUpload =
+    req.file?.mimetype === "application/pdf" || fileName.toLowerCase().endsWith(".pdf");
+  const isPlainTextUpload =
+    req.file?.mimetype?.startsWith("text/") || fileName.toLowerCase().endsWith(".txt");
 
-  if (req.file?.mimetype === "application/pdf") {
+  if (isPdfUpload) {
     const parsed = await parsePdfWithAi(req.file.buffer, req.file.originalname);
     content = parsed.text;
+  }
+
+  if (isPlainTextUpload && !content && req.file?.buffer) {
+    content = req.file.buffer.toString("utf-8");
+  }
+
+  if (!content.trim()) {
+    return res.status(400).json({
+      message: "We could not extract readable text from that file. Paste the notes directly or upload a text-based PDF/TXT file."
+    });
   }
 
   const note = await prisma.note.create({

@@ -22,6 +22,7 @@ export default function StudyRoomPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [generatedCards, setGeneratedCards] = useState([]);
   const [selectedChapterId, setSelectedChapterId] = useState(null);
+  const [generationError, setGenerationError] = useState("");
 
   const { data: subjects = [] } = useQuery({ queryKey: ["subjects"], queryFn: getSubjects });
 
@@ -60,6 +61,7 @@ export default function StudyRoomPage() {
     setNoteText("");
     setSelectedFile(null);
     setGeneratedCards([]);
+    setGenerationError("");
   }, [activeChapter?.id]);
 
   const createSubjectMutation = useMutation({
@@ -108,14 +110,38 @@ export default function StudyRoomPage() {
   }
 
   async function handleGenerate() {
-    if (!activeSubject || !activeChapter || (!noteText.trim() && !selectedFile)) {
+    if (!activeSubject || !activeChapter) {
       return;
     }
-    await uploadMutation.mutateAsync({ chapterId: activeChapter.id });
-    const response = await generateMutation.mutateAsync({
-      chapterId: activeChapter.id
-    });
-    setGeneratedCards(response.cards);
+
+    const hasFreshNotes = Boolean(noteText.trim() || selectedFile);
+    const hasExistingNotes = (activeChapter.notesCount ?? 0) > 0;
+
+    if (!hasFreshNotes && !hasExistingNotes) {
+      setGenerationError("Add notes or upload a file for this chapter before generating flashcards.");
+      return;
+    }
+
+    setGenerationError("");
+
+    try {
+      if (hasFreshNotes) {
+        await uploadMutation.mutateAsync({ chapterId: activeChapter.id });
+      }
+
+      const response = await generateMutation.mutateAsync({
+        chapterId: activeChapter.id
+      });
+
+      setGeneratedCards(response.cards ?? []);
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+    } catch (error) {
+      setGenerationError(
+        error?.response?.data?.message ??
+          error?.message ??
+          "Unable to generate flashcards right now."
+      );
+    }
   }
 
   async function handleCreateChapter() {
@@ -245,10 +271,23 @@ export default function StudyRoomPage() {
                   Upload notes (.pdf, .txt, .docx)
                   <input type="file" className="mt-2 block w-full" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} />
                 </label>
-                <button type="button" onClick={handleGenerate} className="rounded-[1.4rem] bg-brand px-4 py-3 font-medium text-white">
-                  Upload Notes and Generate Flashcards
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={uploadMutation.isPending || generateMutation.isPending}
+                  className="rounded-[1.4rem] bg-brand px-4 py-3 font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {uploadMutation.isPending || generateMutation.isPending
+                    ? "Generating Flashcards..."
+                    : "Upload Notes and Generate Flashcards"}
                 </button>
               </div>
+              {generationError ? <p className="mt-3 text-sm font-medium text-red-500">{generationError}</p> : null}
+              {!generationError && (activeChapter.notesCount ?? 0) > 0 && !noteText.trim() && !selectedFile ? (
+                <p className="mt-3 text-sm text-muted">
+                  Using the latest saved notes for this chapter. Add new notes only if you want to replace them.
+                </p>
+              ) : null}
             </>
           ) : null}
 
