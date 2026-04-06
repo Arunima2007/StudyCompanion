@@ -1,23 +1,27 @@
 # Flashr
 
-Flashr is a full-stack AI-powered flashcard study application for students. It lets users upload or paste lecture notes, generate flashcards with Google Gemini, review answers with AI feedback, and track study progress over time.
+Flashr is a full-stack AI-powered flashcard study app for students. Users can sign in with Google, organize subjects and chapters, upload lecture notes, generate flashcards with Gemini, review answers with AI feedback, and track study progress over time.
 
-## Stack
+## Tech Stack
 
 - `frontend/`: React, Vite, JavaScript, React Router, Tailwind CSS, Axios, React Query, Recharts
 - `backend/`: Node.js, Express, Prisma, JWT cookie auth, Google OAuth, Multer
-- `ai-service/`: FastAPI, PyMuPDF, Gemini API integration
-- `database/`: PostgreSQL-compatible database such as Supabase Postgres
+- `ai-service/`: FastAPI, PyMuPDF, Gemini API, scanned-PDF OCR fallback
+- `database`: PostgreSQL or Supabase Postgres
 
 ## Features
 
-- Public landing page and Google-only sign-in
-- Secure `httpOnly` JWT session cookies
-- Subject-based study room with chapter-level workflows
-- Upload notes per chapter and generate flashcards from them
-- Review flashcards with AI-evaluated written answers
-- Spaced repetition ratings: `Again`, `Hard`, `Medium`, `Easy`
-- Dashboard, progress charts, and profile heatmap
+- Public landing page and Google sign-in
+- Cookie-based authentication with protected routes
+- Subject -> chapter -> chapter workspace study flow
+- Upload notes by paste, `.txt`, or PDF
+- Flashcard generation with Gemini
+- AI answer review with score and feedback
+- Spaced review ratings: `Again`, `Hard`, `Medium`, `Easy`
+- Dashboard summary cards and recent activity
+- Progress analytics and charts
+- Profile heatmap with year switching
+- OCR fallback for scanned/image-based PDFs using Gemini
 
 ## Project Structure
 
@@ -35,7 +39,7 @@ Make sure you have:
 
 - Node.js 18+
 - npm
-- Python 3.10+ recommended
+- Python 3.10+
 - A PostgreSQL database URL
 - A Google OAuth web client
 - A Gemini API key
@@ -64,6 +68,7 @@ DATABASE_URL=your_postgres_connection_string
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_COOKIE_NAME=flashr_session
 GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret_if_needed
 FRONTEND_URL=http://localhost:5173
 AI_SERVICE_URL=http://localhost:8000
 ```
@@ -80,16 +85,14 @@ GEMINI_MODEL=gemini-2.5-flash
 
 ## Google OAuth Setup
 
-In Google Cloud Console, configure your OAuth web application with:
-
-### Authorized JavaScript origins
+In Google Cloud Console, configure your OAuth client with these JavaScript origins:
 
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
 
-### Notes
+Notes:
 
-- If you use `localhost` in the browser, keep `FRONTEND_URL=http://localhost:5173`.
+- Open the app with `http://localhost:5173`, not `127.0.0.1`, if you see an `origin_mismatch` error.
 - The frontend and backend should use the same Google client ID.
 
 ## Installation
@@ -109,6 +112,8 @@ npm install
 npx prisma generate
 ```
 
+If you are connecting Prisma to an existing database and hit migration drift, baseline it first or use `npx prisma db push` for a non-destructive schema sync.
+
 ### 3. AI Service
 
 ```bash
@@ -120,12 +125,12 @@ pip install -r requirements.txt
 
 ## Running The Project
 
-Open three terminals.
+Open three terminals from the project root.
 
 ### Terminal 1: AI Service
 
 ```bash
-cd ai-service
+cd /Users/arunimamohan/Documents/flashcard/ai-service
 source .venv/bin/activate
 ./.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
@@ -133,34 +138,46 @@ source .venv/bin/activate
 ### Terminal 2: Backend
 
 ```bash
-cd backend
+cd /Users/arunimamohan/Documents/flashcard/backend
 npm run dev
 ```
 
 ### Terminal 3: Frontend
 
 ```bash
-cd frontend
+cd /Users/arunimamohan/Documents/flashcard/frontend
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
 Then open:
 
-- `http://localhost:5173`
+- [http://localhost:5173](http://localhost:5173)
 
-## API Health Checks
+## Health Checks
 
 Once everything is running:
 
-- Frontend: `http://localhost:5173`
-- Backend health: `http://localhost:4000/api/health`
-- AI service health: `http://localhost:8000/health`
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend health: [http://localhost:4000/api/health](http://localhost:4000/api/health)
+- AI service health: [http://localhost:8000/health](http://localhost:8000/health)
 
-## Notes About Current Behavior
+## How The Study Flow Works
 
-- Study room flow is subject -> chapter -> chapter workspace.
-- Review can be filtered to a specific chapter.
-- Review time currently guides flashcard generation, not spaced repetition intervals directly.
+1. Sign in with Google.
+2. Create a subject.
+3. Create a chapter inside that subject.
+4. Open the chapter workspace.
+5. Upload notes or paste notes.
+6. Generate flashcards for that chapter.
+7. Review that chapter's cards and rate recall difficulty.
+
+## Notes About File Uploads
+
+- `.txt` uploads are supported directly.
+- Text-based PDFs are parsed with PyMuPDF.
+- Scanned or image-based PDFs now fall back to Gemini OCR.
+- Very low-quality scans or handwritten notes may still extract poorly.
+- `.docx` selection is shown in the UI, but text extraction is not fully implemented like PDF/TXT yet.
 
 ## Troubleshooting
 
@@ -172,30 +189,44 @@ Make sure:
 - the OAuth client includes `http://localhost:5173`
 - you wait a few minutes after saving changes in Google Cloud Console
 
-### Backend crashes on invalid input
+### Flashcard generation says it cannot read notes
 
-Validation errors are now handled and returned as JSON instead of crashing the server.
+Possible causes:
 
-### Database issues
+- the uploaded file contains no selectable or OCR-detectable text
+- the file is a poor-quality scan
+- the chapter's latest upload was empty or unreadable
 
-Check that:
+What to do:
 
-- `DATABASE_URL` is valid
-- Prisma client is generated
-- your Postgres database is reachable from your machine
+- try the upload again
+- paste the notes directly into the text area
+- use a text PDF or `.txt` file
 
-## GitHub Push Flow
+### Prisma drift / migration issues
 
-If you want to push this project to GitHub:
+If your database already exists and `prisma migrate dev` asks to reset it, do not reset unless you want to lose data.
+
+Safer options:
 
 ```bash
-git init
-git add .
-git commit -m "Initial Flashr app setup"
-git branch -M main
-git remote add origin <your-github-repo-url>
-git push -u origin main
+cd backend
+npx prisma db push
+npx prisma generate
 ```
+
+Or baseline the existing schema before using migrations.
+
+## Deployment Notes
+
+- Frontend expects the backend API under `VITE_API_URL`
+- Backend expects the AI service under `AI_SERVICE_URL`
+- Cookie auth and Google OAuth origins must match your deployed frontend URL
+
+## Repository Notes
+
+- The active frontend code now lives in the JavaScript Vite app under `frontend/src/*.jsx`
+- Old unused TypeScript and Next-style scaffold files were removed during cleanup
 
 ## License
 
