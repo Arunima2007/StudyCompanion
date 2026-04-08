@@ -171,12 +171,5 @@ Once everything is running:
 6. Generate flashcards for that chapter.
 7. Review that chapter's cards and rate recall difficulty.
 
-## Notes About File Uploads
-
-- `.txt` uploads are supported directly.
-- Text-based PDFs are parsed with PyMuPDF.
-- Scanned or image-based PDFs now fall back to Gemini OCR.
-- Very low-quality scans or handwritten notes may still extract poorly.
-- `.docx` selection is shown in the UI, but text extraction is not fully implemented like PDF/TXT yet.
 
 
