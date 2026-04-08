@@ -66,6 +66,7 @@ function formatRelativeTime(input) {
 export default function ProfilePage() {
   const { data: profile, isLoading } = useQuery({ queryKey: ["profile"], queryFn: getProfileStats });
   const { data: heatmapData } = useQuery({ queryKey: ["profile-heatmap"], queryFn: () => getProgress("all") });
+  const recentActivity = profile?.recentActivity ?? [];
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = new Set([currentYear]);
@@ -162,12 +163,12 @@ export default function ProfilePage() {
             <p className="mt-2 text-sm text-muted">Latest flashcards you reviewed, similar to a recent submissions feed.</p>
           </div>
           <div className="rounded-full bg-brand-soft px-4 py-2 text-sm font-medium text-brand">
-            {profile.recentActivity.length} recent reviews
+            {recentActivity.length} recent reviews
           </div>
         </div>
         <div className="mt-6 space-y-3">
-          {profile.recentActivity.length ? (
-            profile.recentActivity.map((activity) => (
+          {recentActivity.length ? (
+            recentActivity.map((activity) => (
               <div
                 key={activity.id}
                 className="rounded-[1.5rem] border border-brand-mid bg-brand-soft/60 p-4"
