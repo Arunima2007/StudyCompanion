@@ -345,6 +345,23 @@ export async function profileStats(req, res) {
     }
   });
 
+  const recentAttempts = await prisma.reviewAttempt.findMany({
+    where: { userId: req.user.sub },
+    orderBy: { reviewedAt: "desc" },
+    take: 8,
+    include: {
+      flashCard: {
+        include: {
+          chapter: {
+            include: {
+              subject: true
+            }
+          }
+        }
+      }
+    }
+  });
+
   const subjectPerformance = subjectStats.map((subject) => {
     const attempts = subject.chapters.flatMap((chapter) =>
       chapter.flashCards.flatMap((card) => card.reviewAttempts)
@@ -403,9 +420,14 @@ export async function profileStats(req, res) {
     avgAccuracy: totalAccuracy,
     strongestSubject: strongestSubject?.title ?? "N/A",
     weakestSubject: weakestSubject?.title ?? "N/A",
-    subjectBreakdown: subjectPerformance.map((subject) => ({
-      subject: subject.title,
-      accuracy: Math.round(subject.averageScore)
+    recentActivity: recentAttempts.map((attempt) => ({
+      id: attempt.id,
+      reviewedAt: attempt.reviewedAt,
+      question: attempt.flashCard.question,
+      chapter: attempt.flashCard.chapter.title,
+      subject: attempt.flashCard.chapter.subject.title,
+      score: Math.round(attempt.aiScore),
+      difficulty: attempt.difficultyLabel.toLowerCase()
     }))
   });
 }

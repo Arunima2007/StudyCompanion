@@ -33,6 +33,36 @@ function getYearMetrics(entries, year) {
   };
 }
 
+function formatRelativeTime(input) {
+  const date = new Date(input);
+  const seconds = Math.max(1, Math.floor((Date.now() - date.getTime()) / 1000));
+
+  if (seconds < 60) {
+    return `${seconds} second${seconds === 1 ? "" : "s"} ago`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) {
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
 export default function ProfilePage() {
   const { data: profile, isLoading } = useQuery({ queryKey: ["profile"], queryFn: getProfileStats });
   const { data: heatmapData } = useQuery({ queryKey: ["profile-heatmap"], queryFn: () => getProgress("all") });
@@ -126,19 +156,45 @@ export default function ProfilePage() {
       </div>
 
       <div className="rounded-[2rem] bg-white p-6 shadow-card">
-        <h2 className="text-2xl font-semibold">Subject breakdown</h2>
-        <div className="mt-6 space-y-4">
-          {profile.subjectBreakdown.map((subject) => (
-            <div key={subject.subject}>
-              <div className="flex items-center justify-between">
-                <span>{subject.subject}</span>
-                <span>{subject.accuracy}%</span>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold">Recent activity</h2>
+            <p className="mt-2 text-sm text-muted">Latest flashcards you reviewed, similar to a recent submissions feed.</p>
+          </div>
+          <div className="rounded-full bg-brand-soft px-4 py-2 text-sm font-medium text-brand">
+            {profile.recentActivity.length} recent reviews
+          </div>
+        </div>
+        <div className="mt-6 space-y-3">
+          {profile.recentActivity.length ? (
+            profile.recentActivity.map((activity) => (
+              <div
+                key={activity.id}
+                className="rounded-[1.5rem] border border-brand-mid bg-brand-soft/60 p-4"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="line-clamp-2 text-base font-semibold text-ink">
+                      {activity.question}
+                    </div>
+                    <div className="mt-2 text-sm text-muted">
+                      {activity.subject} • {activity.chapter}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-medium text-ink">{formatRelativeTime(activity.reviewedAt)}</div>
+                    <div className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
+                      {activity.difficulty} • {activity.score}%
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="mt-2 h-3 rounded-full bg-brand-mid">
-                <div className="h-full rounded-full bg-brand" style={{ width: `${subject.accuracy}%` }} />
-              </div>
+            ))
+          ) : (
+            <div className="rounded-[1.4rem] border border-dashed border-brand-mid bg-brand-soft p-5 text-sm text-muted">
+              No review activity yet. Start a study session and your recent reviewed questions will appear here.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
