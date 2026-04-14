@@ -26,14 +26,37 @@ function pickCanonicalChapter(chapters) {
   })[0];
 }
 
+function getTodayRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return { start, end };
+}
+
 export async function listSubjects(req, res) {
+  const today = getTodayRange();
   const subjects = await prisma.subject.findMany({
     where: { userId: req.user.sub },
     include: {
       chapters: {
         include: {
           notes: true,
-          flashCards: true
+          flashCards: {
+            include: {
+              reviewAttempts: {
+                where: {
+                  userId: req.user.sub,
+                  reviewedAt: {
+                    gte: today.start,
+                    lt: today.end
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -60,6 +83,7 @@ export async function listSubjects(req, res) {
           description: canonicalChapter.description,
           notesCount: allNotes.length,
           flashcardsCount: canonicalChapter.flashCards.length,
+          cardsDue: canonicalChapter.flashCards.filter((card) => card.reviewAttempts.length === 0).length,
           latestNoteAt: [...allNotes]
             .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())[0]
             ?.createdAt ?? null
@@ -74,7 +98,7 @@ export async function listSubjects(req, res) {
         emoji: subject.description?.startsWith("emoji:") ? subject.description.replace("emoji:", "").trim() : undefined,
         chapters: mergedChapters,
         chapterCount: mergedChapters.length,
-        cardsDue: mergedChapters.reduce((total, chapter) => total + chapter.flashcardsCount, 0)
+        cardsDue: mergedChapters.reduce((total, chapter) => total + chapter.cardsDue, 0)
       };
     })
   });

@@ -1,13 +1,13 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getDueCards, rateReview, submitReview } from "../lib/api";
 
 export default function ReviewPage() {
   const location = useLocation();
+  const queryClient = useQueryClient();
   const subjectId = location.state?.subjectId;
   const chapterId = location.state?.chapterId;
-  const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState(null);
   const [summary, setSummary] = useState([]);
@@ -18,7 +18,9 @@ export default function ReviewPage() {
     queryFn: () => getDueCards({ subjectId, chapterId })
   });
 
-  const currentCard = cards[index] ?? null;
+  const currentCard = cards[0] ?? null;
+  const sessionTotal = summary.length + cards.length;
+  const currentPosition = Math.min(summary.length + 1, sessionTotal);
 
   const submitMutation = useMutation({
     mutationFn: ({ flashCardId, userAnswer }) => submitReview(flashCardId, userAnswer),
@@ -33,12 +35,19 @@ export default function ReviewPage() {
 
   const rateMutation = useMutation({
     mutationFn: ({ flashCardId, payload }) => rateReview(flashCardId, payload),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       setSummary((current) => [...current, { score: feedback?.score ?? 0 }]);
       setAnswer("");
       setFeedback(null);
       setFormError("");
-      setIndex((current) => current + 1);
+      queryClient.setQueryData(["review", subjectId, chapterId], (currentCards = []) =>
+        currentCards.filter((card) => card.id !== variables.flashCardId)
+      );
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["progress"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-heatmap"] });
     },
     onError: (error) => {
       setFormError(error?.response?.data?.message ?? "Unable to save this review right now.");
@@ -61,6 +70,15 @@ export default function ReviewPage() {
     return Math.round(summary.reduce((total, item) => total + item.score, 0) / summary.length);
   }, [summary]);
 
+  if (!currentCard && summary.length > 0) {
+    return (
+      <div className="rounded-[2rem] bg-white p-8 shadow-card">
+        <h1 className="text-3xl font-semibold">Session complete</h1>
+        <p className="mt-3 text-muted">You reviewed {summary.length} cards with an average AI score of {averageScore}%.</p>
+      </div>
+    );
+  }
+
   if (!cards.length && !currentCard) {
     return (
       <div className="rounded-[2rem] bg-white p-8 shadow-card">
@@ -71,24 +89,15 @@ export default function ReviewPage() {
     );
   }
 
-  if (!currentCard) {
-    return (
-      <div className="rounded-[2rem] bg-white p-8 shadow-card">
-        <h1 className="text-3xl font-semibold">Session complete</h1>
-        <p className="mt-3 text-muted">You reviewed {summary.length} cards with an average AI score of {averageScore}%.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="rounded-[2rem] bg-white p-6 shadow-card">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-muted">Card {index + 1} of {cards.length}</div>
+          <div className="text-sm text-muted">Card {currentPosition} of {sessionTotal}</div>
           <div className="rounded-full bg-brand-soft px-3 py-1 text-sm font-medium text-brand">{currentCard.type}</div>
         </div>
         <div className="mt-4 h-2 rounded-full bg-brand-mid">
-          <div className="h-full rounded-full bg-brand" style={{ width: `${((index + 1) / cards.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-brand" style={{ width: `${(currentPosition / sessionTotal) * 100}%` }} />
         </div>
         <h1 className="mt-6 text-3xl font-semibold">{currentCard.question}</h1>
         <textarea

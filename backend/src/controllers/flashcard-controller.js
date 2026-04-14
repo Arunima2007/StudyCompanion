@@ -44,6 +44,13 @@ function startOfLocalDay(date = new Date()) {
   return value;
 }
 
+function getTodayRange() {
+  const start = startOfLocalDay();
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
 export async function generateFlashcards(req, res) {
   const parsed = generateSchema.parse(req.body);
   const chapter = await prisma.chapter.findFirst({
@@ -111,8 +118,18 @@ export async function generateFlashcards(req, res) {
 
 export async function getDueCards(req, res) {
   const parsed = dueCardsQuerySchema.parse(req.query);
+  const today = getTodayRange();
   const cards = await prisma.flashCard.findMany({
     where: {
+      reviewAttempts: {
+        none: {
+          userId: req.user.sub,
+          reviewedAt: {
+            gte: today.start,
+            lt: today.end
+          }
+        }
+      },
       chapter: {
         ...(parsed.chapterId ? { id: parsed.chapterId } : {}),
         subject: {

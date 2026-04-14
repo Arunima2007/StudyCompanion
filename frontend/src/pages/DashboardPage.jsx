@@ -20,9 +20,9 @@ export default function DashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          ["Cards reviewed today", data.stats.reviewedToday],
-          ["Current streak", data.stats.currentStreak],
-          ["Avg accuracy", `${data.stats.avgAccuracy}%`]
+          ["Cards due today", data.stats.dueToday ?? 0],
+          ["Current streak", data.stats.currentStreak ?? 0],
+          ["Avg accuracy", `${data.stats.avgAccuracy ?? 0}%`]
         ].map(([label, value]) => (
           <div key={label} className="rounded-[1.6rem] bg-white p-6 shadow-card">
             <div className="text-sm text-muted">{label}</div>

@@ -12,7 +12,7 @@ function pickCanonicalChapter(chapters) {
   })[0];
 }
 
-function mergeSubjectChapters(subjects, now = new Date()) {
+function mergeSubjectChapters(subjects) {
   return subjects.map((subject) => {
     const groupedChapters = new Map();
 
@@ -29,7 +29,7 @@ function mergeSubjectChapters(subjects, now = new Date()) {
         id: canonicalChapter.id,
         title: canonicalChapter.title,
         flashCards: canonicalChapter.flashCards,
-        dueCount: canonicalChapter.flashCards.length
+        dueCount: canonicalChapter.flashCards.filter((card) => card.reviewAttempts.length === 0).length
       };
     });
 
@@ -91,7 +91,6 @@ function getTodayRange() {
 }
 
 export async function dashboard(req, res) {
-  const now = new Date();
   const today = getTodayRange();
   const user = await prisma.user.findUnique({
     where: { id: req.user.sub }
@@ -102,13 +101,25 @@ export async function dashboard(req, res) {
     include: {
       chapters: {
         include: {
-          flashCards: true
+          flashCards: {
+            include: {
+              reviewAttempts: {
+                where: {
+                  userId: req.user.sub,
+                  reviewedAt: {
+                    gte: today.start,
+                    lt: today.end
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     orderBy: { updatedAt: "desc" }
   });
-  const mergedSubjects = mergeSubjectChapters(subjects, now);
+  const mergedSubjects = mergeSubjectChapters(subjects);
 
   const recentAttempts = await prisma.reviewAttempt.findMany({
     where: { userId: req.user.sub },
@@ -127,15 +138,12 @@ export async function dashboard(req, res) {
     }
   });
 
-  const reviewedToday = await prisma.reviewAttempt.count({
-    where: {
-      userId: req.user.sub,
-      reviewedAt: {
-        gte: today.start,
-        lt: today.end
-      }
-    }
-  });
+  const dueToday = mergedSubjects.reduce(
+    (total, subject) =>
+      total +
+      subject.mergedChapters.reduce((chapterTotal, chapter) => chapterTotal + chapter.dueCount, 0),
+    0
+  );
 
   const avgAccuracy =
     recentAttempts.length === 0
@@ -147,7 +155,7 @@ export async function dashboard(req, res) {
       name: user?.name ?? "Student"
     },
     stats: {
-      reviewedToday,
+      dueToday,
       currentStreak: user?.currentStreak ?? 0,
       avgAccuracy
     },
