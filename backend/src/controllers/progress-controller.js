@@ -80,8 +80,19 @@ function getRangeStart(range) {
   return null;
 }
 
+function getTodayRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return { start, end };
+}
+
 export async function dashboard(req, res) {
   const now = new Date();
+  const today = getTodayRange();
   const user = await prisma.user.findUnique({
     where: { id: req.user.sub }
   });
@@ -116,22 +127,15 @@ export async function dashboard(req, res) {
     }
   });
 
-  const totalCards = mergedSubjects.reduce(
-    (total, subject) =>
-      total +
-      subject.mergedChapters.reduce(
-        (chapterTotal, chapter) => chapterTotal + chapter.flashCards.length,
-        0
-      ),
-    0
-  );
-
-  const dueToday = mergedSubjects.reduce(
-    (total, subject) =>
-      total +
-      subject.mergedChapters.reduce((chapterTotal, chapter) => chapterTotal + chapter.dueCount, 0),
-    0
-  );
+  const reviewedToday = await prisma.reviewAttempt.count({
+    where: {
+      userId: req.user.sub,
+      reviewedAt: {
+        gte: today.start,
+        lt: today.end
+      }
+    }
+  });
 
   const avgAccuracy =
     recentAttempts.length === 0
@@ -143,9 +147,8 @@ export async function dashboard(req, res) {
       name: user?.name ?? "Student"
     },
     stats: {
-      dueToday,
+      reviewedToday,
       currentStreak: user?.currentStreak ?? 0,
-      totalCards,
       avgAccuracy
     },
     subjects: mergedSubjects.map((subject) => ({

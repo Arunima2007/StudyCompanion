@@ -18,11 +18,10 @@ export default function DashboardPage() {
         <Link to="/review" className="mt-6 inline-flex rounded-full bg-brand px-5 py-3 font-medium text-white">Start studying</Link>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3">
         {[
-          ["Cards ready", data.stats.dueToday],
+          ["Cards reviewed today", data.stats.reviewedToday],
           ["Current streak", data.stats.currentStreak],
-          ["Total cards", data.stats.totalCards],
           ["Avg accuracy", `${data.stats.avgAccuracy}%`]
         ].map(([label, value]) => (
           <div key={label} className="rounded-[1.6rem] bg-white p-6 shadow-card">
