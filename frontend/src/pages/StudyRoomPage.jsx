@@ -24,7 +24,11 @@ export default function StudyRoomPage() {
   const [selectedChapterId, setSelectedChapterId] = useState(null);
   const [generationError, setGenerationError] = useState("");
 
-  const { data: subjects = [] } = useQuery({ queryKey: ["subjects"], queryFn: getSubjects });
+  const { data: subjects = [] } = useQuery({
+    queryKey: ["subjects"],
+    queryFn: getSubjects,
+    refetchOnMount: "always"
+  });
 
   const activeSubject = useMemo(() => {
     if (!subjects.length) {
@@ -218,7 +222,7 @@ export default function StudyRoomPage() {
               >
                 <div className="text-lg font-semibold">{chapter.title}</div>
                 <div className={`mt-2 text-sm ${activeChapter?.id === chapter.id ? "text-white/85" : "text-muted"}`}>
-                  {chapter.notesCount} note uploads • {chapter.flashcardsCount} flashcards
+                  {chapter.notesCount} note uploads • {chapter.cardsDue ?? 0} due • {chapter.flashcardsCount} flashcards
                 </div>
                 <div className={`mt-4 text-sm font-medium ${activeChapter?.id === chapter.id ? "text-white" : "text-brand"}`}>
                   Open chapter workspace
