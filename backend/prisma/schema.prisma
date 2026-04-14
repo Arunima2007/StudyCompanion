@@ -71,11 +71,8 @@ model FlashCard {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
   reviewCount           Int             @default(0)
-  successfulRecallCount Int             @default(0)
   averageScore          Float           @default(0)
-  difficultyLabel       DifficultyLabel @default(MEDIUM)
   lastReviewedAt        DateTime?
-  nextReviewAt          DateTime?
   chapter               Chapter         @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   reviewAttempts        ReviewAttempt[]
 }
@@ -87,9 +84,7 @@ model ReviewAttempt {
   userAnswer      String
   aiFeedback      Json
   aiScore         Float
-  difficultyLabel DifficultyLabel
   reviewedAt      DateTime        @default(now())
-  nextReviewAt    DateTime?
   flashCard       FlashCard       @relation(fields: [flashCardId], references: [id], onDelete: Cascade)
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -104,10 +99,4 @@ model DailyActivity {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
-}
-
-enum DifficultyLabel {
-  EASY
-  MEDIUM
-  HARD
 }

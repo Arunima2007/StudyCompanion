@@ -3,18 +3,6 @@ import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getDueCards, rateReview, submitReview } from "../lib/api";
 
-function inferDifficultyLabel(score) {
-  if (score >= 80) {
-    return "easy";
-  }
-
-  if (score >= 55) {
-    return "medium";
-  }
-
-  return "hard";
-}
-
 export default function ReviewPage() {
   const location = useLocation();
   const subjectId = location.state?.subjectId;
@@ -171,7 +159,6 @@ export default function ReviewPage() {
                 flashCardId: currentCard.id,
                 payload: {
                   userAnswer: answer,
-                  difficultyLabel: inferDifficultyLabel(feedback.score),
                   aiFeedback: feedback
                 }
               })

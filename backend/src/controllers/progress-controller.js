@@ -163,8 +163,7 @@ export async function dashboard(req, res) {
       reviewedAt: attempt.reviewedAt,
       subject: attempt.flashCard.chapter.subject.title,
       chapter: attempt.flashCard.chapter.title,
-      score: Math.round(attempt.aiScore),
-      difficulty: attempt.difficultyLabel.toLowerCase()
+      score: Math.round(attempt.aiScore)
     }))
   });
 }
@@ -282,15 +281,6 @@ export async function overview(req, res) {
     };
   });
 
-  const difficultyBreakdown = attempts.reduce(
-    (totals, attempt) => {
-      const key = attempt.difficultyLabel.toLowerCase();
-      totals[key] = (totals[key] ?? 0) + 1;
-      return totals;
-    },
-    { again: 0, hard: 0, medium: 0, easy: 0 }
-  );
-
   const cardsReviewed = attempts.length;
   const avgAccuracy =
     attempts.length === 0
@@ -318,8 +308,7 @@ export async function overview(req, res) {
       label: entry.label,
       reviewed: entry.reviewed
     })),
-    subjectPerformance,
-    difficultyBreakdown
+    subjectPerformance
   });
 }
 
@@ -424,8 +413,7 @@ export async function profileStats(req, res) {
       question: attempt.flashCard.question,
       chapter: attempt.flashCard.chapter.title,
       subject: attempt.flashCard.chapter.subject.title,
-      score: Math.round(attempt.aiScore),
-      difficulty: attempt.difficultyLabel.toLowerCase()
+      score: Math.round(attempt.aiScore)
     }))
   });
 }

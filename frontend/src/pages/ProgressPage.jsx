@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getProgress } from "../lib/api";
 
 const ranges = [
@@ -19,8 +19,6 @@ export default function ProgressPage() {
   if (isLoading) {
     return <div className="rounded-[2rem] bg-white p-8 shadow-card">Loading progress...</div>;
   }
-
-  const scoreBandData = Object.entries(data.difficultyBreakdown).map(([name, value]) => ({ name, value }));
 
   return (
     <div className="space-y-6">
@@ -81,7 +79,7 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] bg-white p-6 shadow-card">
+        <div className="rounded-[2rem] bg-white p-6 shadow-card lg:col-span-2">
           <h2 className="text-xl font-semibold">Performance by subject</h2>
           <div className="mt-6 space-y-4">
             {data.subjectPerformance.map((subject) => (
@@ -95,22 +93,6 @@ export default function ProgressPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] bg-white p-6 shadow-card">
-          <h2 className="text-xl font-semibold">Score breakdown</h2>
-          <div className="mt-4 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={scoreBandData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100}>
-                  {scoreBandData.map((entry, index) => (
-                    <Cell key={entry.name} fill={["#ef4444", "#f97316", "#eab308", "#22c55e"][index]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
           </div>
         </div>
       </div>

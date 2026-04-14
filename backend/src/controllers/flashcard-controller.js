@@ -19,7 +19,6 @@ const dueCardsQuerySchema = z.object({
 
 const ratingSchema = z.object({
   userAnswer: z.string().min(1),
-  difficultyLabel: z.enum(["again", "hard", "medium", "easy"]).optional(),
   aiFeedback: z.object({
     score: z.number(),
     strengths: z.array(z.string()),
@@ -43,18 +42,6 @@ function startOfLocalDay(date = new Date()) {
   const value = new Date(date);
   value.setHours(0, 0, 0, 0);
   return value;
-}
-
-function inferDifficultyLabel(score) {
-  if (score >= 80) {
-    return "EASY";
-  }
-
-  if (score >= 55) {
-    return "MEDIUM";
-  }
-
-  return "HARD";
 }
 
 export async function generateFlashcards(req, res) {
@@ -103,8 +90,7 @@ export async function generateFlashcards(req, res) {
         question: flashcard.question,
         referenceAnswer: flashcard.referenceAnswer,
         hint: flashcard.hint,
-        sourceSnippet: flashcard.sourceSnippet,
-        nextReviewAt: null
+        sourceSnippet: flashcard.sourceSnippet
       }
     });
     created.push(card);
@@ -178,8 +164,7 @@ export async function getDueCards(req, res) {
       answer: card.referenceAnswer,
       hint: card.hint,
       chapterTitle: card.chapter.title,
-      subjectTitle: card.chapter.subject.title,
-      difficulty: card.difficultyLabel.toLowerCase()
+      subjectTitle: card.chapter.subject.title
     }))
   });
 }
@@ -230,27 +215,21 @@ export async function rateReview(req, res) {
     return res.status(404).json({ message: "Flashcard not found." });
   }
 
-  const persistedDifficultyLabel = inferDifficultyLabel(parsed.aiFeedback.score);
   await prisma.reviewAttempt.create({
     data: {
       flashCardId: flashCard.id,
       userId: req.user.sub,
       userAnswer: parsed.userAnswer,
       aiFeedback: parsed.aiFeedback,
-      aiScore: parsed.aiFeedback.score,
-      difficultyLabel: persistedDifficultyLabel,
-      nextReviewAt: null
+      aiScore: parsed.aiFeedback.score
     }
   });
 
   await prisma.flashCard.update({
     where: { id: flashCard.id },
     data: {
-      difficultyLabel: persistedDifficultyLabel,
       lastReviewedAt: new Date(),
-      nextReviewAt: null,
       reviewCount: { increment: 1 },
-      successfulRecallCount: parsed.aiFeedback.score >= 70 ? { increment: 1 } : undefined,
       averageScore:
         flashCard.reviewCount === 0
           ? parsed.aiFeedback.score
@@ -286,7 +265,6 @@ export async function rateReview(req, res) {
 
   res.json({
     flashCardId: req.params.flashCardId,
-    feedback: parsed.aiFeedback,
-    nextReviewAt: null
+    feedback: parsed.aiFeedback
   });
 }
