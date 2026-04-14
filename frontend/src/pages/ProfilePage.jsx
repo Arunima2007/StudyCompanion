@@ -185,7 +185,7 @@ export default function ProfilePage() {
                   <div className="shrink-0 text-right">
                     <div className="text-sm font-medium text-ink">{formatRelativeTime(activity.reviewedAt)}</div>
                     <div className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
-                      {activity.difficulty} • {activity.score}%
+                      AI score • {activity.score}%
                     </div>
                   </div>
                 </div>

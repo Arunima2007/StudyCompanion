@@ -7,7 +7,7 @@ const features = [
   "Generate intelligent flashcards with Gemini",
   "Write answers instead of just flipping cards",
   "Get AI evaluation and targeted feedback",
-  "Schedule reviews with spaced repetition",
+  "Review cards in a simple active recall flow",
   "Track streaks, charts, and subject accuracy"
 ];
 
@@ -69,7 +69,7 @@ export default function LandingPage() {
             <div className="rounded-[1.6rem] bg-[linear-gradient(135deg,#6C5CE7_0%,#8D82F8_100%)] p-6 text-white">
               <p className="text-sm uppercase tracking-[0.24em] text-white/70">Flashcard Preview</p>
               <h2 className="mt-3 text-3xl font-semibold">Explain the role of mitochondria in ATP production.</h2>
-              <p className="mt-4 text-white/85">Write your answer, submit it to AI review, then rate the card based on difficulty.</p>
+              <p className="mt-4 text-white/85">Write your answer, submit it to AI review, then continue through your cards with clear feedback.</p>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {["Biology", "Economics", "Physics", "History"].map((subject) => (

@@ -17,7 +17,7 @@ Flashr is a full-stack AI-powered flashcard study app for students. Users can si
 - Upload notes by paste, `.txt`, or PDF
 - Flashcard generation with Gemini
 - AI answer review with score and feedback
-- Spaced review ratings: `Again`, `Hard`, `Medium`, `Easy`
+- Simple active-recall review flow with AI scoring and feedback
 - Dashboard summary cards and recent activity
 - Progress analytics and charts
 - Profile heatmap with year switching
@@ -169,7 +169,6 @@ Once everything is running:
 4. Open the chapter workspace.
 5. Upload notes or paste notes.
 6. Generate flashcards for that chapter.
-7. Review that chapter's cards and rate recall difficulty.
-
+7. Review that chapter's cards and continue through AI-scored feedback.
 
 

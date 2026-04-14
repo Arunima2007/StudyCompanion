@@ -20,7 +20,7 @@ export default function ProgressPage() {
     return <div className="rounded-[2rem] bg-white p-8 shadow-card">Loading progress...</div>;
   }
 
-  const difficultyData = Object.entries(data.difficultyBreakdown).map(([name, value]) => ({ name, value }));
+  const scoreBandData = Object.entries(data.difficultyBreakdown).map(([name, value]) => ({ name, value }));
 
   return (
     <div className="space-y-6">
@@ -99,12 +99,12 @@ export default function ProgressPage() {
         </div>
 
         <div className="rounded-[2rem] bg-white p-6 shadow-card">
-          <h2 className="text-xl font-semibold">Difficulty breakdown</h2>
+          <h2 className="text-xl font-semibold">Score breakdown</h2>
           <div className="mt-4 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={difficultyData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100}>
-                  {difficultyData.map((entry, index) => (
+                <Pie data={scoreBandData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100}>
+                  {scoreBandData.map((entry, index) => (
                     <Cell key={entry.name} fill={["#ef4444", "#f97316", "#eab308", "#22c55e"][index]} />
                   ))}
                 </Pie>

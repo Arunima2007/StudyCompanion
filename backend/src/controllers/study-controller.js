@@ -33,11 +33,7 @@ export async function listSubjects(req, res) {
       chapters: {
         include: {
           notes: true,
-          flashCards: {
-            where: {
-              OR: [{ nextReviewAt: null }, { nextReviewAt: { lte: new Date() } }]
-            }
-          }
+          flashCards: true
         }
       }
     },

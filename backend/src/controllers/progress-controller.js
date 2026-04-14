@@ -29,9 +29,7 @@ function mergeSubjectChapters(subjects, now = new Date()) {
         id: canonicalChapter.id,
         title: canonicalChapter.title,
         flashCards: canonicalChapter.flashCards,
-        dueCount: canonicalChapter.flashCards.filter(
-          (card) => !card.nextReviewAt || card.nextReviewAt <= now
-        ).length
+        dueCount: canonicalChapter.flashCards.length
       };
     });
 

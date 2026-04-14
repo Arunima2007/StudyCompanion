@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const steps = [
-  "Welcome to Flashr. Your dashboard shows what is due today.",
+  "Welcome to Flashr. Your dashboard shows your generated cards and study progress.",
   "This is your Study Room, where you create subjects.",
   "Inside each subject, add chapters for each lecture topic.",
   "Upload notes, set review time, and generate flashcards.",

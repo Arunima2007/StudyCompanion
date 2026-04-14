@@ -3,13 +3,6 @@ import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getDueCards, rateReview, submitReview } from "../lib/api";
 
-const ratings = [
-  ["again", "Again", "bg-red-500"],
-  ["hard", "Hard", "bg-orange-500"],
-  ["medium", "Medium", "bg-yellow-500"],
-  ["easy", "Easy", "bg-green-500"]
-];
-
 export default function ReviewPage() {
   const location = useLocation();
   const subjectId = location.state?.subjectId;
@@ -68,8 +61,8 @@ export default function ReviewPage() {
   if (!cards.length && !currentCard) {
     return (
       <div className="rounded-[2rem] bg-white p-8 shadow-card">
-        <h1 className="text-3xl font-semibold">No cards due right now</h1>
-        <p className="mt-3 text-muted">Generate cards in your study room or come back after the next scheduled review.</p>
+        <h1 className="text-3xl font-semibold">No cards to review right now</h1>
+        <p className="mt-3 text-muted">Generate cards in your study room, then start a review session here.</p>
         <button type="button" onClick={() => refetch()} className="mt-6 rounded-full bg-brand px-5 py-3 font-medium text-white">Refresh</button>
       </div>
     );
@@ -155,27 +148,22 @@ export default function ReviewPage() {
             <div className="font-medium">Improved answer</div>
             <p className="mt-2 text-sm leading-7 text-muted">{feedback.improvedAnswer}</p>
           </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            {ratings.map(([value, label, className]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() =>
-                  rateMutation.mutate({
-                    flashCardId: currentCard.id,
-                    payload: {
-                      userAnswer: answer,
-                      difficultyLabel: value,
-                      aiFeedback: feedback
-                    }
-                  })
+          <button
+            type="button"
+            disabled={rateMutation.isPending}
+            onClick={() =>
+              rateMutation.mutate({
+                flashCardId: currentCard.id,
+                payload: {
+                  userAnswer: answer,
+                  aiFeedback: feedback
                 }
-                className={`rounded-full px-5 py-3 font-medium text-white ${className}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+              })
+            }
+            className="mt-6 rounded-full bg-brand px-5 py-3 font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {rateMutation.isPending ? "Saving review..." : "Continue to next card"}
+          </button>
         </div>
       ) : null}
     </div>

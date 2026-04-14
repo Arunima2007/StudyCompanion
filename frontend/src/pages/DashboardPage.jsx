@@ -14,13 +14,13 @@ export default function DashboardPage() {
       <section className="rounded-[2rem] bg-white p-8 shadow-card">
         <p className="text-sm uppercase tracking-[0.24em] text-brand">Dashboard</p>
         <h1 className="mt-3 text-4xl font-semibold">Good morning, {data.user.name}</h1>
-        <p className="mt-3 max-w-2xl text-muted">Review what is due today, open a subject, or jump straight into your next active recall session.</p>
+        <p className="mt-3 max-w-2xl text-muted">Open a subject, review your generated cards, or jump straight into your next active recall session.</p>
         <Link to="/review" className="mt-6 inline-flex rounded-full bg-brand px-5 py-3 font-medium text-white">Start studying</Link>
       </section>
 
       <section className="grid gap-4 md:grid-cols-4">
         {[
-          ["Cards due today", data.stats.dueToday],
+          ["Cards ready", data.stats.dueToday],
           ["Current streak", data.stats.currentStreak],
           ["Total cards", data.stats.totalCards],
           ["Avg accuracy", `${data.stats.avgAccuracy}%`]
@@ -44,7 +44,7 @@ export default function DashboardPage() {
                 <div className="text-lg font-medium">{subject.title}</div>
                 <div className="mt-3 flex justify-between text-sm text-muted">
                   <span>{subject.cards} cards</span>
-                  <span>{subject.due} due</span>
+                  <span>{subject.due} ready</span>
                 </div>
               </div>
             ))}
@@ -63,7 +63,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <div className="font-medium text-brand">{item.score}%</div>
-                    <div className="text-sm capitalize text-muted">{item.difficulty}</div>
+                    <div className="text-sm text-muted">AI score</div>
                   </div>
                 </div>
               </div>

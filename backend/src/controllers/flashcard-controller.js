@@ -19,7 +19,7 @@ const dueCardsQuerySchema = z.object({
 
 const ratingSchema = z.object({
   userAnswer: z.string().min(1),
-  difficultyLabel: z.enum(["again", "hard", "medium", "easy"]),
+  difficultyLabel: z.enum(["again", "hard", "medium", "easy"]).optional(),
   aiFeedback: z.object({
     score: z.number(),
     strengths: z.array(z.string()),
@@ -45,74 +45,16 @@ function startOfLocalDay(date = new Date()) {
   return value;
 }
 
-function scheduleNextReview(flashCard, difficultyLabel) {
-  const now = new Date();
-  const currentStep = flashCard.reviewCount ?? 0;
-  const successRate =
-    flashCard.reviewCount > 0
-      ? flashCard.successfulRecallCount / flashCard.reviewCount
-      : 0;
-  const estimatedEase = 1.7 + successRate * 1.1 + (flashCard.averageScore >= 85 ? 0.15 : 0);
-
-  if (difficultyLabel === "again") {
-    const nextReviewAt = new Date(now);
-    nextReviewAt.setMinutes(nextReviewAt.getMinutes() + 10);
-
-    return {
-      nextReviewAt
-    };
+function inferDifficultyLabel(score) {
+  if (score >= 80) {
+    return "EASY";
   }
 
-  if (difficultyLabel === "hard") {
-    const nextInterval =
-      currentStep <= 1
-        ? 1
-        : currentStep === 2
-          ? 2
-          : Math.max(2, Math.round(Math.max(1, currentStep) * 0.9));
-    const nextReviewAt = new Date(now);
-    nextReviewAt.setDate(nextReviewAt.getDate() + nextInterval);
-
-    return {
-      nextReviewAt
-    };
+  if (score >= 55) {
+    return "MEDIUM";
   }
 
-  if (difficultyLabel === "medium") {
-    const nextInterval =
-      currentStep === 0
-        ? 1
-        : currentStep === 1
-          ? 3
-          : currentStep === 2
-            ? 5
-            : Math.max(4, Math.round(currentStep * estimatedEase));
-    const nextReviewAt = new Date(now);
-    nextReviewAt.setDate(nextReviewAt.getDate() + nextInterval);
-
-    return {
-      nextReviewAt
-    };
-  }
-
-  const nextInterval =
-    currentStep === 0
-      ? 3
-      : currentStep === 1
-        ? 7
-        : currentStep === 2
-          ? 12
-          : Math.max(7, Math.round(currentStep * (estimatedEase + 1.1)));
-  const nextReviewAt = new Date(now);
-  nextReviewAt.setDate(nextReviewAt.getDate() + nextInterval);
-
-  return {
-    nextReviewAt
-  };
-}
-
-function toPersistedDifficultyLabel(difficultyLabel) {
-  return difficultyLabel === "again" ? "HARD" : difficultyLabel.toUpperCase();
+  return "HARD";
 }
 
 export async function generateFlashcards(req, res) {
@@ -162,7 +104,7 @@ export async function generateFlashcards(req, res) {
         referenceAnswer: flashcard.referenceAnswer,
         hint: flashcard.hint,
         sourceSnippet: flashcard.sourceSnippet,
-        nextReviewAt: new Date()
+        nextReviewAt: null
       }
     });
     created.push(card);
@@ -191,8 +133,7 @@ export async function getDueCards(req, res) {
           userId: req.user.sub,
           ...(parsed.subjectId ? { id: parsed.subjectId } : {})
         }
-      },
-      OR: [{ nextReviewAt: null }, { nextReviewAt: { lte: new Date() } }]
+      }
     },
     include: {
       chapter: {
@@ -201,7 +142,7 @@ export async function getDueCards(req, res) {
         }
       }
     },
-    orderBy: [{ nextReviewAt: "asc" }, { createdAt: "asc" }]
+    orderBy: [{ createdAt: "asc" }]
   });
 
   const canonicalChapters = new Map();
@@ -289,8 +230,7 @@ export async function rateReview(req, res) {
     return res.status(404).json({ message: "Flashcard not found." });
   }
 
-  const schedule = scheduleNextReview(flashCard, parsed.difficultyLabel);
-  const persistedDifficultyLabel = toPersistedDifficultyLabel(parsed.difficultyLabel);
+  const persistedDifficultyLabel = inferDifficultyLabel(parsed.aiFeedback.score);
   await prisma.reviewAttempt.create({
     data: {
       flashCardId: flashCard.id,
@@ -299,7 +239,7 @@ export async function rateReview(req, res) {
       aiFeedback: parsed.aiFeedback,
       aiScore: parsed.aiFeedback.score,
       difficultyLabel: persistedDifficultyLabel,
-      nextReviewAt: schedule.nextReviewAt
+      nextReviewAt: null
     }
   });
 
@@ -308,7 +248,7 @@ export async function rateReview(req, res) {
     data: {
       difficultyLabel: persistedDifficultyLabel,
       lastReviewedAt: new Date(),
-      nextReviewAt: schedule.nextReviewAt,
+      nextReviewAt: null,
       reviewCount: { increment: 1 },
       successfulRecallCount: parsed.aiFeedback.score >= 70 ? { increment: 1 } : undefined,
       averageScore:
@@ -347,6 +287,6 @@ export async function rateReview(req, res) {
   res.json({
     flashCardId: req.params.flashCardId,
     feedback: parsed.aiFeedback,
-    nextReviewAt: schedule.nextReviewAt
+    nextReviewAt: null
   });
 }
