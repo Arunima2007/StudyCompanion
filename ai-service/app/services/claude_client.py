@@ -13,6 +13,8 @@ from app.prompts import FLASHCARD_SYSTEM_PROMPT, REVIEW_SYSTEM_PROMPT
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 logger = logging.getLogger(__name__)
+MAX_PROMPT_NOTE_CHARS = 14000
+MAX_PROMPT_LINES = 120
 
 
 def _normalize_notes(notes: str) -> str:
@@ -64,6 +66,68 @@ def _clean_sentences(notes: str) -> list[str]:
             cleaned.append(sentence)
 
     return cleaned
+
+
+def _compress_notes_for_prompt(notes: str, max_chars: int = MAX_PROMPT_NOTE_CHARS) -> str:
+    normalized = _normalize_notes(notes)
+
+    if len(normalized) <= max_chars:
+        return normalized
+
+    lines = [line.strip() for line in normalized.splitlines() if line.strip()]
+
+    if not lines:
+        return normalized[:max_chars]
+
+    unique_lines: list[str] = []
+    seen: set[str] = set()
+
+    for line in lines:
+        lowered = line.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        unique_lines.append(line)
+
+    target_lines = min(MAX_PROMPT_LINES, len(unique_lines))
+
+    if target_lines == 0:
+        return normalized[:max_chars]
+
+    selected: list[str] = []
+    used_indexes: set[int] = set()
+    last_index = len(unique_lines) - 1
+
+    for slot in range(target_lines):
+        if target_lines == 1:
+            index = 0
+        else:
+            index = round(slot * last_index / (target_lines - 1))
+
+        while index in used_indexes and index < last_index:
+            index += 1
+        while index in used_indexes and index > 0:
+            index -= 1
+
+        used_indexes.add(index)
+        selected.append(unique_lines[index])
+
+    compressed = "\n".join(selected)
+
+    if len(compressed) <= max_chars:
+        return compressed
+
+    trimmed: list[str] = []
+    current_size = 0
+
+    for line in selected:
+        line_size = len(line) + 1
+        if current_size + line_size > max_chars:
+            break
+        trimmed.append(line)
+        current_size += line_size
+
+    return "\n".join(trimmed) if trimmed else compressed[:max_chars]
 
 
 def _tokenize(text: str) -> list[str]:
@@ -395,16 +459,17 @@ async def _call_claude(system_prompt: str, user_prompt: str) -> dict[str, Any]:
 
 async def generate_flashcards(notes: str, chapter_title: str, cards_requested: int) -> dict[str, Any]:
     normalized_notes = _normalize_notes(notes)
+    prompt_notes = _compress_notes_for_prompt(normalized_notes)
     safe_title = _clean_chapter_title(chapter_title)
 
     if not get_gemini_api_key():
-        return _heuristic_flashcards(normalized_notes, safe_title, cards_requested)
+        return _heuristic_flashcards(prompt_notes, safe_title, cards_requested)
 
     prompt = f"""
 Chapter title: {safe_title}
 Cards requested: {cards_requested}
 Notes:
-{normalized_notes}
+{prompt_notes}
 
 Generate {cards_requested} flashcards strictly from these notes.
 If the notes do not support {cards_requested} strong cards, return fewer cards.
@@ -414,10 +479,10 @@ Do not mention file names, upload names, IDs, roll numbers, or document codes in
 """
     try:
         payload = await _call_claude(FLASHCARD_SYSTEM_PROMPT, prompt)
-        return _normalize_flashcards(payload, normalized_notes, safe_title, cards_requested)
+        return _normalize_flashcards(payload, prompt_notes, safe_title, cards_requested)
     except Exception as error:
         logger.exception("Gemini flashcard generation failed")
-        fallback = _heuristic_flashcards(normalized_notes, safe_title, cards_requested)
+        fallback = _heuristic_flashcards(prompt_notes, safe_title, cards_requested)
         fallback["debug"] = {"source": "fallback", "reason": str(error)}
         return fallback
 

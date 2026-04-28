@@ -7,6 +7,9 @@ import httpx
 from app.config import get_gemini_api_key, settings
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+MAX_OCR_PAGES = 8
+OCR_BATCH_SIZE = 2
+OCR_SCALE = 1.5
 
 
 def _extract_embedded_text(content: bytes) -> str:
@@ -29,15 +32,16 @@ async def _extract_text_with_gemini_ocr(content: bytes) -> str:
         return ""
 
     document = fitz.open(stream=BytesIO(content), filetype="pdf")
-    image_parts = []
+    page_batches: list[list[dict[str, dict[str, str]]]] = []
+    current_batch: list[dict[str, dict[str, str]]] = []
 
     try:
         for index, page in enumerate(document):
-            if index >= 12:
+            if index >= MAX_OCR_PAGES:
                 break
-            pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+            pixmap = page.get_pixmap(matrix=fitz.Matrix(OCR_SCALE, OCR_SCALE), alpha=False)
             image_bytes = pixmap.tobytes("png")
-            image_parts.append(
+            current_batch.append(
                 {
                     "inline_data": {
                         "mime_type": "image/png",
@@ -45,10 +49,16 @@ async def _extract_text_with_gemini_ocr(content: bytes) -> str:
                     }
                 }
             )
+            if len(current_batch) >= OCR_BATCH_SIZE:
+                page_batches.append(current_batch)
+                current_batch = []
     finally:
         document.close()
 
-    if not image_parts:
+    if current_batch:
+        page_batches.append(current_batch)
+
+    if not page_batches:
         return ""
 
     prompt = (
@@ -57,38 +67,45 @@ async def _extract_text_with_gemini_ocr(content: bytes) -> str:
         "Do not summarize, explain, or add extra words."
     )
 
-    payload = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": prompt}, *image_parts],
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.1,
-        },
-    }
+    extracted_chunks: list[str] = []
 
     async with httpx.AsyncClient(timeout=120) as client:
-        response = await client.post(
-            GEMINI_URL.format(model=settings.gemini_model),
-            params={"key": api_key},
-            headers={"content-type": "application/json"},
-            json=payload,
-        )
+        for batch in page_batches:
+            payload = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": prompt}, *batch],
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                },
+            }
 
-    if response.status_code >= 400:
-        return ""
+            response = await client.post(
+                GEMINI_URL.format(model=settings.gemini_model),
+                params={"key": api_key},
+                headers={"content-type": "application/json"},
+                json=payload,
+            )
 
-    data = response.json()
-    candidates = data.get("candidates", [])
+            if response.status_code >= 400:
+                continue
 
-    if not candidates:
-        return ""
+            data = response.json()
+            candidates = data.get("candidates", [])
 
-    parts = candidates[0].get("content", {}).get("parts", [])
-    extracted = "\n".join(part.get("text", "") for part in parts if part.get("text"))
-    return extracted.strip()
+            if not candidates:
+                continue
+
+            parts = candidates[0].get("content", {}).get("parts", [])
+            extracted = "\n".join(part.get("text", "") for part in parts if part.get("text")).strip()
+
+            if extracted:
+                extracted_chunks.append(extracted)
+
+    return "\n\n".join(extracted_chunks).strip()
 
 
 async def extract_text_from_pdf(content: bytes) -> str:
