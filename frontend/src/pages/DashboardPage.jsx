@@ -2,6 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { getDashboard } from "../lib/api";
 
+function getGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) {
+    return "Good morning";
+  }
+
+  if (hour < 17) {
+    return "Good afternoon";
+  }
+
+  return "Good evening";
+}
+
 export default function DashboardPage() {
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: getDashboard });
 
@@ -13,7 +27,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <section className="rounded-[2rem] bg-white p-8 shadow-card">
         <p className="text-sm uppercase tracking-[0.24em] text-brand">Dashboard</p>
-        <h1 className="mt-3 text-4xl font-semibold">Good morning, {data.user.name}</h1>
+        <h1 className="mt-3 text-4xl font-semibold">{getGreeting()}, {data.user.name}</h1>
         <p className="mt-3 max-w-2xl text-muted">Open a subject, review your generated cards, or jump straight into your next active recall session.</p>
         <Link to="/review" className="mt-6 inline-flex rounded-full bg-brand px-5 py-3 font-medium text-white">Start studying</Link>
       </section>
