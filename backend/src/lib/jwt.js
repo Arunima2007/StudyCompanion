@@ -10,10 +10,12 @@ export function verifyToken(token) {
 }
 
 export function buildSessionCookieOptions() {
+  const isProduction = env.nodeEnv === "production";
+
   return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.nodeEnv === "production",
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
     maxAge: 1000 * 60 * 60 * 24 * 30,
     path: "/"
   };
