@@ -43,18 +43,17 @@ export default function Heatmap({ data, year }) {
   const containerRef = useRef(null);
 
   const { weeks, monthLabels } = useMemo(() => {
-    const yearEntries = data
-      .filter((item) => new Date(item.date).getFullYear() === year)
+    const allEntries = (data ?? [])
+      .slice()
       .sort((left, right) => new Date(left.date) - new Date(right.date));
 
-    const activityByDate = new Map(yearEntries.map((item) => [item.date, item]));
+    const activityByDate = new Map(allEntries.map((item) => [item.date, item]));
     const now = new Date();
     const isCurrentYear = year === now.getFullYear();
-    const yearStart = new Date(year, 0, 1);
-    const yearEnd = isCurrentYear ? now : new Date(year, 11, 31);
-    yearEnd.setHours(0, 0, 0, 0);
-    const startWeek = startOfWeek(yearStart);
-    const endWeek = startOfWeek(yearEnd);
+    const windowEnd = isCurrentYear ? new Date(now) : new Date(year, 11, 31);
+    windowEnd.setHours(0, 0, 0, 0);
+    const endWeek = startOfWeek(windowEnd);
+    const startWeek = addWeeks(endWeek, -51);
 
     const builtWeeks = [];
     const builtMonthLabels = [];
@@ -66,12 +65,13 @@ export default function Heatmap({ data, year }) {
       const days = Array.from({ length: 7 }, (_, dayOffset) => {
         const day = addDays(currentWeek, dayOffset);
         const key = formatDateKey(day);
+        const entry = activityByDate.get(key);
 
-        if (day.getFullYear() !== year) {
-          return { date: key, count: 0, value: 0, isOutsideYear: true };
+        if (isCurrentYear && day > windowEnd) {
+          return { date: key, count: 0, value: 0, isFuture: true };
         }
 
-        return activityByDate.get(key) ?? { date: key, count: 0, value: 0 };
+        return entry ?? { date: key, count: 0, value: 0 };
       });
 
       const monthDate = getMonthLabelDate(currentWeek);
@@ -197,12 +197,12 @@ export default function Heatmap({ data, year }) {
                       style={{
                         width: `${layout.cellSize}px`,
                         height: `${layout.cellSize}px`,
-                        backgroundColor: item.isOutsideYear ? "transparent" : shades[Math.min(item.value ?? 0, 4)],
-                        opacity: item.isOutsideYear ? 0 : 1
+                        backgroundColor: item.isFuture ? "transparent" : shades[Math.min(item.value ?? 0, 4)],
+                        opacity: item.isFuture ? 0 : 1
                       }}
                     />
 
-                    {hoveredCell?.date === item.date && !item.isOutsideYear ? (
+                    {hoveredCell?.date === item.date && !item.isFuture ? (
                       <div
                         className={`pointer-events-none absolute bottom-full z-20 mb-2 whitespace-nowrap rounded-xl bg-ink px-3 py-2 text-xs font-medium text-white shadow-lg ${
                           weekIndex >= weeks.length - 3

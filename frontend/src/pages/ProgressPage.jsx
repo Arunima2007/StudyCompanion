@@ -9,9 +9,19 @@ const ranges = [
   ["all", "All time"]
 ];
 
+const emptyProgress = {
+  avgAccuracy: 0,
+  cardsReviewed: 0,
+  daysActive: 0,
+  consistency: 0,
+  accuracyOverTime: [],
+  cardsPerDay: [],
+  subjectPerformance: []
+};
+
 export default function ProgressPage() {
   const [range, setRange] = useState("week");
-  const { data, isLoading } = useQuery({
+  const { data = emptyProgress, isError, isLoading, error } = useQuery({
     queryKey: ["progress", range],
     queryFn: () => getProgress(range)
   });
@@ -35,6 +45,13 @@ export default function ProgressPage() {
           </div>
         </div>
       </div>
+
+      {isError ? (
+        <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Progress data could not be loaded right now.
+          {error?.response?.data?.message ? ` ${error.response.data.message}` : " Please check that the backend is running and your restored database is migrated."}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-4">
         {[

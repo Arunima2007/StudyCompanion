@@ -3,6 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import Heatmap from "../components/Heatmap";
 import { getProfileStats, getProgress } from "../lib/api";
 
+const emptyProfile = {
+  user: {
+    name: "Student",
+    email: "",
+    studyingSince: null
+  },
+  currentStreak: 0,
+  maxStreak: 0,
+  maxActiveDays: 0,
+  totalFlashcardsReviewed: 0,
+  avgAccuracy: 0,
+  recentActivity: []
+};
+
+const emptyHeatmapData = {
+  heatmap: []
+};
+
 function getYearMetrics(entries, year) {
   const yearEntries = entries
     .filter((item) => new Date(item.date).getFullYear() === year && item.count > 0)
@@ -64,9 +82,24 @@ function formatRelativeTime(input) {
 }
 
 export default function ProfilePage() {
-  const { data: profile, isLoading } = useQuery({ queryKey: ["profile"], queryFn: getProfileStats });
-  const { data: heatmapData } = useQuery({ queryKey: ["profile-heatmap"], queryFn: () => getProgress("all") });
+  const {
+    data: profile = emptyProfile,
+    error: profileError,
+    isError: isProfileError,
+    isLoading: isProfileLoading
+  } = useQuery({ queryKey: ["profile"], queryFn: getProfileStats });
+  const {
+    data: heatmapData = emptyHeatmapData,
+    error: heatmapError,
+    isError: isHeatmapError,
+    isLoading: isHeatmapLoading
+  } = useQuery({ queryKey: ["profile-heatmap"], queryFn: () => getProgress("all") });
   const recentActivity = profile?.recentActivity ?? [];
+  const hasProfileError = isProfileError || isHeatmapError;
+  const profileErrorMessage =
+    profileError?.response?.data?.message ??
+    heatmapError?.response?.data?.message ??
+    "Please check that the backend is running and your restored database is migrated.";
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = new Set([currentYear]);
@@ -83,7 +116,7 @@ export default function ProfilePage() {
     [heatmapData, selectedYear]
   );
 
-  if (isLoading || !heatmapData) {
+  if (isProfileLoading || isHeatmapLoading) {
     return <div className="rounded-[2rem] bg-white p-8 shadow-card">Loading profile...</div>;
   }
 
@@ -92,15 +125,21 @@ export default function ProfilePage() {
       <div className="rounded-[2rem] bg-white p-8 shadow-card">
         <div className="flex flex-col gap-6 md:flex-row md:items-center">
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand text-3xl font-semibold text-white">
-            {profile.user.name.slice(0, 2).toUpperCase()}
+            {(profile.user?.name ?? "Student").slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <h1 className="text-4xl font-semibold">{profile.user.name}</h1>
-            <p className="mt-2 text-muted">{profile.user.email}</p>
-            <p className="mt-2 text-sm text-muted">Studying since {profile.user.studyingSince ? new Date(profile.user.studyingSince).toLocaleDateString() : "today"}</p>
+            <h1 className="text-4xl font-semibold">{profile.user?.name ?? "Student"}</h1>
+            <p className="mt-2 text-muted">{profile.user?.email ?? ""}</p>
+            <p className="mt-2 text-sm text-muted">Studying since {profile.user?.studyingSince ? new Date(profile.user.studyingSince).toLocaleDateString() : "today"}</p>
           </div>
         </div>
       </div>
+
+      {hasProfileError ? (
+        <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Profile data could not be loaded right now. {profileErrorMessage}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-5">
         {[
@@ -108,7 +147,7 @@ export default function ProfilePage() {
           ["Max streak", profile.maxStreak],
           ["Max active days", profile.maxActiveDays],
           ["Total cards done", profile.totalFlashcardsReviewed],
-          ["Avg accuracy", `${profile.avgAccuracy}%`]
+          ["Avg accuracy", `${profile.avgAccuracy ?? 0}%`]
         ].map(([label, value]) => (
           <div key={label} className="rounded-[1.6rem] bg-white p-6 shadow-card">
             <div className="text-sm text-muted">{label}</div>
