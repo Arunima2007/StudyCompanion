@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithGoogle } = useAuth();
   const buttonRef = useRef(null);
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -40,12 +40,15 @@ export default function LoginPage() {
 
     document.body.appendChild(script);
     return () => {
+      window.google?.accounts.id.cancel();
       if (document.body.contains(script)) {
         document.body.removeChild(script);
       }
     };
   }, [navigate, signInWithGoogle]);
-
+  if (loading) {
+    return <div>Loading...</div>;
+  }
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }

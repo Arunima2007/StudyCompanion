@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { completeTour, getMe, googleLogin, logout as logoutRequest } from "../lib/api";
+import { queryClient } from "../lib/queryClient";
 
 const AuthContext = createContext(null);
 
@@ -20,11 +21,14 @@ export function AuthProvider({ children }) {
       loading,
       signInWithGoogle: async (credential) => {
         const data = await googleLogin(credential);
+        queryClient.clear();
         setUser(data.user);
         return data;
       },
       logout: async () => {
         await logoutRequest();
+        queryClient.clear();
+        window.google?.accounts?.id?.disableAutoSelect();
         setUser(null);
       },
       finishTour: async () => {
