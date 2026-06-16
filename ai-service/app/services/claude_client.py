@@ -13,8 +13,8 @@ from app.prompts import FLASHCARD_SYSTEM_PROMPT, REVIEW_SYSTEM_PROMPT
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 logger = logging.getLogger(__name__)
-MAX_PROMPT_NOTE_CHARS = 14000
-MAX_PROMPT_LINES = 120
+MAX_PROMPT_NOTE_CHARS = 150000
+MAX_PROMPT_LINES = 1000
 
 
 def _normalize_notes(notes: str) -> str:

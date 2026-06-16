@@ -7,7 +7,7 @@ import httpx
 from app.config import get_gemini_api_key, settings
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-MAX_OCR_PAGES = 8
+MAX_OCR_PAGES = 24
 OCR_BATCH_SIZE = 2
 OCR_SCALE = 1.5
 
