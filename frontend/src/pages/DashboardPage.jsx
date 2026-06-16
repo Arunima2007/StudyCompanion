@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { getDashboard } from "../lib/api";
+import Loader from "../components/Loader";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -20,7 +21,7 @@ export default function DashboardPage() {
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: getDashboard });
 
   if (isLoading) {
-    return <div className="rounded-[2rem] bg-white p-8 shadow-card">Loading dashboard...</div>;
+    return <Loader message="Loading dashboard..." />;
   }
 
   return (

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getDueCards, rateReview, submitReview } from "../lib/api";
+import Loader from "../components/Loader";
 
 export default function ReviewPage() {
   const location = useLocation();
@@ -13,7 +14,7 @@ export default function ReviewPage() {
   const [summary, setSummary] = useState([]);
   const [formError, setFormError] = useState("");
 
-  const { data: cards = [], refetch } = useQuery({
+  const { data: cards = [], isLoading, refetch } = useQuery({
     queryKey: ["review", subjectId, chapterId],
     queryFn: () => getDueCards({ subjectId, chapterId })
   });
@@ -69,6 +70,10 @@ export default function ReviewPage() {
     }
     return Math.round(summary.reduce((total, item) => total + item.score, 0) / summary.length);
   }, [summary]);
+
+  if (isLoading) {
+    return <Loader message="Loading flashcards..." />;
+  }
 
   if (!currentCard && summary.length > 0) {
     return (

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getProgress } from "../lib/api";
+import Loader from "../components/Loader";
 
 const ranges = [
   ["week", "This week"],
@@ -27,7 +28,7 @@ export default function ProgressPage() {
   });
 
   if (isLoading) {
-    return <div className="rounded-[2rem] bg-white p-8 shadow-card">Loading progress...</div>;
+    return <Loader message="Loading progress..." />;
   }
 
   return (

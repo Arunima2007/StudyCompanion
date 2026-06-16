@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createChapter, createSubject, generateFlashcards, getSubjects, uploadNotes } from "../lib/api";
+import Loader from "../components/Loader";
 
 const presets = [
   { emoji: "🧠", color: "#6C5CE7" },
@@ -24,7 +25,7 @@ export default function StudyRoomPage() {
   const [selectedChapterId, setSelectedChapterId] = useState(null);
   const [generationError, setGenerationError] = useState("");
 
-  const { data: subjects = [] } = useQuery({
+  const { data: subjects = [], isLoading } = useQuery({
     queryKey: ["subjects"],
     queryFn: getSubjects,
     refetchOnMount: "always"
@@ -160,6 +161,10 @@ export default function StudyRoomPage() {
     setChapterTitle("");
     navigate(`/study-room/${activeSubject.id}`);
     return chapter;
+  }
+
+  if (isLoading) {
+    return <Loader message="Loading study room..." />;
   }
 
   return (

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Heatmap from "../components/Heatmap";
 import { getProfileStats, getProgress } from "../lib/api";
+import Loader from "../components/Loader";
 
 const emptyProfile = {
   user: {
@@ -117,7 +118,7 @@ export default function ProfilePage() {
   );
 
   if (isProfileLoading || isHeatmapLoading) {
-    return <div className="rounded-[2rem] bg-white p-8 shadow-card">Loading profile...</div>;
+    return <Loader message="Loading profile..." />;
   }
 
   return (

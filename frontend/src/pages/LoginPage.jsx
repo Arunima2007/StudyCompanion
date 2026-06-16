@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Loader from "../components/Loader";
 
 export default function LoginPage() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -47,7 +48,7 @@ export default function LoginPage() {
     };
   }, [navigate, signInWithGoogle]);
   if (loading) {
-    return <div>Loading...</div>;
+    return <Loader fullPage={true} message="Signing in..." />;
   }
   if (user) {
     return <Navigate to="/dashboard" replace />;
